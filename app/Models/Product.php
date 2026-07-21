@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,7 @@ class Product extends Model
         'sku',
         'name',
         'slug',
+        'category_id',
         'category',
         'description',
         'price',
@@ -57,6 +59,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function categoryModel(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
+
     public function objectFiles(): MorphMany
     {
         return $this->morphMany(ObjectFile::class, 'related');
@@ -66,6 +73,10 @@ class Product extends Model
     {
         if (! $this->image_path) {
             return null;
+        }
+
+        if (Str::startsWith($this->image_path, ['http://', 'https://'])) {
+            return $this->image_path;
         }
 
         return Storage::disk(config('filesystems.product_images_disk', 'public'))->url($this->image_path);

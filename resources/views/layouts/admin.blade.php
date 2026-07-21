@@ -25,6 +25,7 @@
                 <a href="{{ route('admin.products.index') }}" class="flex items-center rounded-md px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600">Kelola Produk</a>
                 <a href="{{ route('admin.products.index') }}#stok" class="flex items-center rounded-md px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600">Stok</a>
                 <a href="{{ route('admin.orders.index') }}" class="flex items-center rounded-md px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600">Orders</a>
+                <a href="{{ route('admin.reports.index') }}" class="flex items-center rounded-md px-3 py-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600">Laporan Penjualan</a>
             </nav>
 
             <div class="border-t border-slate-200 p-4">

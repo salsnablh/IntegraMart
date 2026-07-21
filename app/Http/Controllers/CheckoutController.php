@@ -23,12 +23,17 @@ class CheckoutController extends Controller
         }
 
         $subtotal = $cartItems->sum(fn (array $item) => $item['line_total']);
+        $savedShipping = $this->savedShippingData();
+        $prefill = array_merge($savedShipping ?? [], old());
 
         return view('checkout.index', [
             'cartItems' => $cartItems,
             'subtotal' => $subtotal,
             'total' => $subtotal,
             'user' => auth()->user(),
+            'savedShipping' => $savedShipping,
+            'prefill' => $prefill,
+            'editShipping' => request()->boolean('edit_shipping'),
         ]);
     }
 
@@ -40,16 +45,29 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', 'Keranjang masih kosong.');
         }
 
-        $data = $request->validate([
-            'recipient_name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'shipping_address' => ['required', 'string', 'max:1000'],
-            'shipping_city' => ['nullable', 'string', 'max:255'],
-            'shipping_province' => ['nullable', 'string', 'max:255'],
-            'shipping_postal_code' => ['nullable', 'string', 'max:20'],
+        $savedShipping = $this->savedShippingData();
+
+        $rules = [
             'payment_method' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ];
+
+        if (! $savedShipping) {
+            $rules = array_merge($rules, [
+                'recipient_name' => ['required', 'string', 'max:255'],
+                'phone' => ['required', 'string', 'max:30'],
+                'shipping_address' => ['required', 'string', 'max:1000'],
+                'shipping_city' => ['nullable', 'string', 'max:255'],
+                'shipping_province' => ['nullable', 'string', 'max:255'],
+                'shipping_postal_code' => ['nullable', 'string', 'max:20'],
+            ]);
+        }
+
+        $data = $request->validate($rules);
+
+        if ($savedShipping) {
+            $data = array_merge($savedShipping, $data);
+        }
 
         try {
             $order = DB::transaction(function () use ($cart, $data) {
@@ -85,6 +103,11 @@ class CheckoutController extends Controller
                         'phone' => $data['phone'],
                     ]
                 );
+
+                $customer->update([
+                    'name' => $data['recipient_name'],
+                    'phone' => $data['phone'],
+                ]);
 
                 $orderNumber = 'INV-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
 
@@ -159,5 +182,31 @@ class CheckoutController extends Controller
                     'line_total' => $qty * (float) $product->price,
                 ];
             });
+    }
+
+    private function savedShippingData(): ?array
+    {
+        $user = auth()->user();
+
+        $latestOrder = Order::query()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('customer', fn ($customerQuery) => $customerQuery->where('user_id', $user->id));
+            })
+            ->latest()
+            ->first();
+
+        if (! $latestOrder) {
+            return null;
+        }
+
+        return [
+            'recipient_name' => $latestOrder->recipient_name,
+            'phone' => $latestOrder->phone ?? $latestOrder->recipient_phone,
+            'shipping_address' => $latestOrder->shipping_address,
+            'shipping_city' => $latestOrder->shipping_city,
+            'shipping_province' => $latestOrder->shipping_province,
+            'shipping_postal_code' => $latestOrder->shipping_postal_code,
+        ];
     }
 }

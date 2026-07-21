@@ -15,7 +15,7 @@ class OrderSeeder extends Seeder
         $orders = [
             [
                 'order_code' => 'ORD-20260720-0001',
-                'customer_email' => 'test@example.com',
+                'customer_email' => 'customer@integramart.com',
                 'shipping_cost' => 15000,
                 'admin_fee' => 2500,
                 'discount_amount' => 0,

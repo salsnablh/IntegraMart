@@ -5,27 +5,19 @@ namespace Database\Seeders;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class CustomerSeeder extends Seeder
 {
     public function run(): void
     {
-        $loginUser = User::updateOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-            ],
-        );
+        $loginUser = User::where('email', 'customer@integramart.com')->firstOrFail();
 
         Customer::updateOrCreate(
-            ['email' => 'test@example.com'],
+            ['email' => 'customer@integramart.com'],
             [
                 'user_id' => $loginUser->id,
-                'name' => 'Test User',
-                'phone' => '081234567890',
+                'name' => 'Customer IntegraMart',
+                'phone' => '081200000001',
                 'notes' => 'Customer yang terhubung dengan user login dummy.',
             ],
         );

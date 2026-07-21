@@ -32,7 +32,9 @@
             <form method="POST" action="{{ route('cart.add', $product->id) }}" class="mt-6 flex max-w-sm gap-3">
                 @csrf
                 <input name="qty" type="number" min="1" max="{{ max($product->stock, 1) }}" value="{{ old('qty', 1) }}" class="w-24 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-600 shadow-sm focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20" @disabled($product->stock <= 0)>
-                <button type="submit" class="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:bg-slate-300" @disabled($product->stock <= 0)>Tambah ke Cart</button>
+                <button type="submit" class="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300" @disabled($product->stock <= 0)>
+                    {{ $product->stock <= 0 ? 'Stok Habis' : 'Tambah ke Keranjang' }}
+                </button>
             </form>
             @error('qty') <p class="mt-2 text-sm text-rose-700">{{ $message }}</p> @enderror
         </div>

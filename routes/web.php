@@ -3,13 +3,13 @@
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\ShopController;
 use App\Models\Customer;
-use App\Models\Order;
-use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -45,51 +45,12 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])
     ->name('auth.google.callback');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        $monthRevenue = Order::query()
-            ->where('payment_status', 'paid')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->sum('grand_total');
-
-        $newOrdersCount = Order::query()
-            ->whereIn('status', ['pending', 'paid', 'processing'])
-            ->whereIn('shipping_status', ['not_created', 'pending'])
-            ->count();
-
-        $totalProducts = Product::count();
-        $lowStockCount = Product::where('stock', '>', 0)->where('stock', '<', 5)->count();
-        $outOfStockCount = Product::where('stock', '<=', 0)->count();
-        $totalCustomers = Customer::count();
-
-        $lowStockProducts = Product::query()
-            ->where('stock', '<', 5)
-            ->orderBy('stock')
-            ->orderBy('name')
-            ->limit(5)
-            ->get();
-
-        $recentOrders = Order::query()
-            ->with('customer')
-            ->latest()
-            ->limit(10)
-            ->get();
-
-        return view('dashboard', compact(
-            'monthRevenue',
-            'newOrdersCount',
-            'totalProducts',
-            'lowStockCount',
-            'outOfStockCount',
-            'totalCustomers',
-            'lowStockProducts',
-            'recentOrders',
-        ));
-    })->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::resource('products', ProductController::class);
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.update-status');
+    Route::get('/reports/sales', [ReportController::class, 'index'])->name('reports.index');
 });
 
 Route::post('/logout', function (Request $request) {

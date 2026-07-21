@@ -46,9 +46,22 @@
             </div>
             <div class="flex flex-wrap gap-2">
         <a href="{{ route('admin.products.create') }}" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">+ Tambah Produk Baru</a>
-                <a href="#recent-orders" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900">Kelola Pesanan</a>
-                <a href="#sales-summary" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900">Lihat Laporan Penjualan</a>
+                <a href="{{ route('admin.orders.index') }}" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900">Kelola Pesanan</a>
+                <a href="{{ route('admin.reports.index') }}" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-900">Lihat Laporan Penjualan</a>
             </div>
+        </div>
+    </section>
+
+    <section class="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900">Tren Pendapatan</h2>
+                <p class="mt-1 text-sm text-slate-400">Pendapatan dari order non-cancelled selama 30 hari terakhir.</p>
+            </div>
+            <a href="{{ route('admin.reports.index') }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Buka laporan</a>
+        </div>
+        <div class="mt-5 h-72">
+            <canvas id="salesTrendChart" class="h-full w-full"></canvas>
         </div>
     </section>
 
@@ -151,4 +164,48 @@
             Total pendapatan bulan ini: Rp {{ number_format((float) $monthRevenue, 0, ',', '.') }}
         </div>
     </section>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const salesTrendData = @json($salesTrend);
+        const salesTrendCanvas = document.getElementById('salesTrendChart');
+
+        if (salesTrendCanvas) {
+            new Chart(salesTrendCanvas, {
+                type: 'line',
+                data: {
+                    labels: salesTrendData.map((item) => item.label),
+                    datasets: [{
+                        label: 'Pendapatan',
+                        data: salesTrendData.map((item) => item.value),
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.12)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 3,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => 'Rp ' + Number(context.raw || 0).toLocaleString('id-ID'),
+                            },
+                        },
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => 'Rp ' + Number(value).toLocaleString('id-ID'),
+                            },
+                        },
+                    },
+                },
+            });
+        }
+    </script>
 @endsection

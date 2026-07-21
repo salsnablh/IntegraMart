@@ -66,9 +66,17 @@
                         </div>
                     </div>
                 @empty
-                    <div class="p-8 text-center">
-                        <p class="text-sm text-slate-400">Keranjang masih kosong.</p>
-                        <a href="{{ route('shop.index') }}" class="mt-4 inline-flex rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">Mulai Belanja</a>
+                    <div class="flex flex-col items-center px-8 py-12 text-center">
+                        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <svg viewBox="0 0 24 24" class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l2.4 12.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 7H6.2" />
+                                <circle cx="10" cy="20" r="1.5" />
+                                <circle cx="17" cy="20" r="1.5" />
+                            </svg>
+                        </div>
+                        <h3 class="mt-4 text-lg font-semibold text-slate-900">Keranjang kamu masih kosong</h3>
+                        <p class="mt-2 text-sm text-slate-400">Tambahkan produk favoritmu dari katalog untuk mulai berbelanja.</p>
+                        <a href="{{ route('shop.index') }}" class="mt-5 inline-flex rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">Mulai Belanja</a>
                     </div>
                 @endforelse
             </div>

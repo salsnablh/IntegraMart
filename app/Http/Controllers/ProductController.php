@@ -68,7 +68,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
-        if ($product->image_path) {
+        if ($product->image_path && ! Str::startsWith($product->image_path, ['http://', 'https://'])) {
             Storage::disk($this->imageDisk())->delete($product->image_path);
         }
 
