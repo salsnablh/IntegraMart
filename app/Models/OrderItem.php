@@ -14,6 +14,7 @@ class OrderItem extends Model
         'order_id',
         'product_id',
         'qty',
+        'quantity',
         'price',
         'subtotal',
     ];
@@ -25,6 +26,16 @@ class OrderItem extends Model
             'price' => 'decimal:2',
             'subtotal' => 'decimal:2',
         ];
+    }
+
+    public function getQuantityAttribute(): int
+    {
+        return (int) $this->qty;
+    }
+
+    public function setQuantityAttribute(mixed $value): void
+    {
+        $this->attributes['qty'] = (int) $value;
     }
 
     public function order(): BelongsTo

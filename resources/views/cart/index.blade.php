@@ -36,7 +36,7 @@
 
                         <div>
                             <h2 class="font-semibold text-slate-900">{{ $product->name }}</h2>
-                            <p class="mt-1 text-sm text-slate-400">{{ $product->sku }} · Stok {{ $product->stock }}</p>
+                            <p class="mt-1 text-sm text-slate-400">{{ $product->sku }} - Stok {{ $product->stock }}</p>
                         </div>
 
                         <div>
@@ -86,7 +86,7 @@
                     <span>Rp {{ number_format((float) $total, 0, ',', '.') }}</span>
                 </div>
             </div>
-            <a href="#" class="mt-5 flex w-full items-center justify-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 {{ $cartItems->isEmpty() ? 'pointer-events-none opacity-50' : '' }}">Lanjut ke Checkout</a>
+            <a href="{{ route('checkout.index') }}" class="mt-5 flex w-full items-center justify-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-600 {{ $cartItems->isEmpty() ? 'pointer-events-none opacity-50' : '' }}">Lanjut ke Checkout</a>
         </aside>
     </div>
 @endsection
