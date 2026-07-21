@@ -18,7 +18,7 @@ class ProductSeeder extends Seeder
                 'price' => 85000,
                 'stock' => 45,
                 'is_active' => true,
-                'image_path' => 'products/smart-led-bulb.jpg',
+                'image_path' => null,
             ],
             [
                 'sku' => 'IM-FSN-2001',
@@ -28,7 +28,7 @@ class ProductSeeder extends Seeder
                 'price' => 75000,
                 'stock' => 120,
                 'is_active' => true,
-                'image_path' => 'products/kaos-basic-cotton.jpg',
+                'image_path' => null,
             ],
             [
                 'sku' => 'IM-HOM-3001',
@@ -38,7 +38,7 @@ class ProductSeeder extends Seeder
                 'price' => 215000,
                 'stock' => 18,
                 'is_active' => true,
-                'image_path' => 'products/rak-dapur-minimalis.jpg',
+                'image_path' => null,
             ],
             [
                 'sku' => 'IM-HLT-4001',
@@ -48,7 +48,7 @@ class ProductSeeder extends Seeder
                 'price' => 58000,
                 'stock' => 0,
                 'is_active' => false,
-                'image_path' => 'products/vitamin-c-500mg.jpg',
+                'image_path' => null,
             ],
             [
                 'sku' => 'IM-FNB-5001',
@@ -58,7 +58,7 @@ class ProductSeeder extends Seeder
                 'price' => 95000,
                 'stock' => 36,
                 'is_active' => true,
-                'image_path' => 'products/kopi-arabica-250g.jpg',
+                'image_path' => null,
             ],
         ];
 
