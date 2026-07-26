@@ -19,11 +19,16 @@ class GoogleAuthController extends Controller
     {
         $googleUser = Socialite::driver('google')->user();
         $user = $googleAuthService->findOrCreateUser($googleUser);
+        $target = session()->pull('login_target', 'customer');
 
         Auth::login($user);
 
         request()->session()->regenerate();
 
-        return redirect()->route('admin.dashboard');
+        $defaultRedirect = $target === 'admin'
+            ? route('admin.dashboard')
+            : route('shop.index');
+
+        return redirect()->intended($defaultRedirect);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\Payment\DokuCheckoutService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -37,22 +38,25 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function process(Request $request): RedirectResponse
+    public function process(Request $request, DokuCheckoutService $dokuCheckoutService): RedirectResponse
     {
         $cart = session('cart', []);
+
+        ksort($cart, SORT_NUMERIC);
 
         if ($cart === []) {
             return redirect()->route('cart.index')->with('error', 'Keranjang masih kosong.');
         }
 
         $savedShipping = $this->savedShippingData();
+        $useSavedShipping = $savedShipping && $request->boolean('use_saved_shipping');
 
         $rules = [
             'payment_method' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
 
-        if (! $savedShipping) {
+        if (! $useSavedShipping) {
             $rules = array_merge($rules, [
                 'recipient_name' => ['required', 'string', 'max:255'],
                 'phone' => ['required', 'string', 'max:30'],
@@ -65,14 +69,17 @@ class CheckoutController extends Controller
 
         $data = $request->validate($rules);
 
-        if ($savedShipping) {
+        if ($useSavedShipping) {
             $data = array_merge($savedShipping, $data);
         }
 
         try {
             $order = DB::transaction(function () use ($cart, $data) {
+                $productIds = array_map('intval', array_keys($cart));
+
                 $products = Product::query()
-                    ->whereIn('id', array_keys($cart))
+                    ->whereIn('id', $productIds)
+                    ->orderBy('id')
                     ->lockForUpdate()
                     ->get()
                     ->keyBy('id');
@@ -148,7 +155,11 @@ class CheckoutController extends Controller
                         'subtotal' => $lineTotal,
                     ]);
 
-                    $product->decrement('stock', $qty);
+                    Product::query()
+                        ->whereKey($product->id)
+                        ->update([
+                            'stock' => DB::raw('stock - '.(int) $qty),
+                        ]);
                 }
 
                 return $order;
@@ -157,14 +168,61 @@ class CheckoutController extends Controller
             return back()->withInput()->with('error', $throwable->getMessage());
         }
 
+        $order->load(['items.product', 'customer', 'user']);
+
+        $payment = $order->payments()->create([
+            'payment_gateway' => 'doku',
+            'payment_method' => 'checkout',
+            'payment_channel' => 'doku_checkout',
+            'external_id' => $order->order_number ?? $order->order_code,
+            'amount' => $order->total_amount ?? $order->grand_total,
+            'status' => 'pending',
+        ]);
+
         session()->forget('cart');
 
-        return redirect()->route('orders.show', $order)->with('success', 'Checkout berhasil. Pesanan sudah dibuat.');
+        try {
+            $dokuPayment = $dokuCheckoutService->createCheckoutPayment($order);
+        } catch (\Throwable $throwable) {
+            $payment->update([
+                'status' => 'failed',
+                'raw_response' => [
+                    'error' => $throwable->getMessage(),
+                ],
+            ]);
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'Pesanan berhasil dibuat, tetapi pembayaran DOKU gagal dibuat: '.$throwable->getMessage());
+        }
+
+        $paymentUrl = $dokuPayment['payment_url'] ?? null;
+
+        if (! $paymentUrl) {
+            $payment->update([
+                'status' => 'failed',
+                'raw_response' => $dokuPayment,
+            ]);
+
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('error', 'Pesanan berhasil dibuat, tetapi DOKU tidak mengembalikan payment URL.');
+        }
+
+        $payment->update([
+            'status' => 'pending',
+            'expired_at' => $dokuPayment['expired_at'] ?? null,
+            'raw_response' => $dokuPayment,
+        ]);
+
+        return redirect()->away($paymentUrl);
     }
 
     private function cartItems(): Collection
     {
         $cart = session('cart', []);
+
+        ksort($cart, SORT_NUMERIC);
 
         if ($cart === []) {
             return collect();
@@ -189,10 +247,7 @@ class CheckoutController extends Controller
         $user = auth()->user();
 
         $latestOrder = Order::query()
-            ->where(function ($query) use ($user) {
-                $query->where('user_id', $user->id)
-                    ->orWhereHas('customer', fn ($customerQuery) => $customerQuery->where('user_id', $user->id));
-            })
+            ->where('user_id', $user->id)
             ->latest()
             ->first();
 

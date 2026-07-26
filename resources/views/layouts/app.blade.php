@@ -41,7 +41,7 @@
                         <button type="submit" class="rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-700">Logout</button>
                     </form>
                 @else
-                    <a href="{{ route('login') }}" class="rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-700">Login</a>
+                    <a href="{{ route('login.portal') }}" class="rounded-md bg-indigo-600 px-3 py-2 font-medium text-white hover:bg-indigo-700">Login</a>
                 @endauth
             </div>
         </div>

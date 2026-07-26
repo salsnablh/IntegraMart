@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\LoginPortalController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\Payment\DokuNotificationController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\ShopController;
@@ -16,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [ShopController::class, 'index'])->name('shop.index');
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.browse');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
+Route::post('/payments/doku/notification', DokuNotificationController::class)->name('payments.doku.notification');
 
 Route::prefix('cart')->name('cart.')->group(function () {
     Route::get('/', [CartController::class, 'index'])->name('index');
@@ -30,11 +33,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
     Route::get('/my-orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/my-orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::get('/my-orders/{order}/pay', [OrderController::class, 'pay'])->name('orders.pay');
 });
 
+Route::get('/login-portal', [LoginPortalController::class, 'index'])->middleware('guest')->name('login.portal');
 Route::get('/login', function () {
-    return view('auth.login');
+    return redirect()->route('login.portal');
 })->middleware('guest')->name('login');
+Route::get('/login/customer', function () {
+    session(['login_target' => 'customer']);
+
+    return redirect()->route('auth.google.redirect');
+})->middleware('guest')->name('login.customer');
+Route::get('/login/admin', function () {
+    session(['login_target' => 'admin']);
+
+    return redirect()->route('auth.google.redirect');
+})->middleware('guest')->name('login.admin');
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])
     ->middleware('guest')
