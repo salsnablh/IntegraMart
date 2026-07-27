@@ -17,7 +17,7 @@ class GoogleAuthController extends Controller
 
     public function callback(GoogleAuthService $googleAuthService): RedirectResponse
     {
-        $googleUser = Socialite::driver('google')->user();
+        $googleUser = Socialite::driver('google')->stateless()->user();
         $user = $googleAuthService->findOrCreateUser($googleUser);
         $target = session()->pull('login_target', 'customer');
 
@@ -32,3 +32,4 @@ class GoogleAuthController extends Controller
         return redirect()->intended($defaultRedirect);
     }
 }
+
