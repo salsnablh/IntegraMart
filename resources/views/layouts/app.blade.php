@@ -33,8 +33,10 @@
                         <span class="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-bold text-white">{{ $cartCount }}</span>
                     @endif
                 </a>
-
                 @auth
+                    <a href="{{ route('orders.index') }}" class="rounded-md px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-indigo-600">
+                        Pesanan saya
+                    </a>
                     <div class="rounded-md bg-slate-100 px-3 py-2 font-medium text-slate-700">{{ auth()->user()->name }}</div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
@@ -52,3 +54,4 @@
     </main>
 </body>
 </html>
+

@@ -3,9 +3,11 @@
 namespace App\Services\Payment;
 
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -75,6 +77,106 @@ class DokuCheckoutService
         ];
     }
 
+    public function checkPaymentStatus(string $invoiceNumber): array
+    {
+        $requestId = (string) Str::uuid();
+        $requestTimestamp = now('UTC')->format('Y-m-d\TH:i:s\Z');
+        $requestTarget = '/orders/v1/status/'.rawurlencode($invoiceNumber);
+        $signature = $this->buildSignature($requestId, $requestTimestamp, $requestTarget);
+
+        try {
+            $response = Http::baseUrl($this->baseUrl())
+                ->acceptJson()
+                ->withHeaders([
+                    'Client-Id' => $this->clientId(),
+                    'Request-Id' => $requestId,
+                    'Request-Timestamp' => $requestTimestamp,
+                    'Signature' => $signature,
+                ])
+                ->get($requestTarget);
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('Gagal mengecek status DOKU: '.$exception->getMessage(), 0, $exception);
+        }
+
+        $responseData = $response->json() ?? [];
+
+        if (! $response->successful()) {
+            $message = data_get($responseData, 'error_messages.0')
+                ?? data_get($responseData, 'message.0')
+                ?? $response->body();
+
+            throw new RuntimeException('DOKU menolak cek status pembayaran: '.$message);
+        }
+
+        return $responseData;
+    }
+
+    public function applyPaymentStatus(Payment $payment, array $payload): void
+    {
+        $transactionStatus = strtoupper((string) (
+            data_get($payload, 'transaction.status')
+            ?? data_get($payload, 'transaction.status_code')
+            ?? data_get($payload, 'response.transaction.status')
+            ?? data_get($payload, 'response.transaction.status_code')
+            ?? data_get($payload, 'status')
+        ));
+        $orderStatus = strtoupper((string) (
+            data_get($payload, 'order.status')
+            ?? data_get($payload, 'response.order.status')
+        ));
+
+        DB::transaction(function () use ($payment, $payload, $transactionStatus, $orderStatus): void {
+            $payment->loadMissing('order');
+            $order = $payment->order;
+
+            if (in_array($transactionStatus, ['SUCCESS', 'PAID', 'SETTLEMENT', 'CAPTURE', '00'], true) || in_array($orderStatus, ['SUCCESS', 'PAID', 'ORDER_PAID'], true)) {
+                $paidAt = data_get($payload, 'transaction.date') ?? data_get($payload, 'response.transaction.date');
+                $payment->update([
+                    'status' => 'paid',
+                    'paid_at' => $paidAt ? Carbon::parse($paidAt) : now(),
+                    'raw_response' => $payload,
+                ]);
+
+                if ($order) {
+                    $order->update([
+                        'payment_status' => 'paid',
+                        'status' => 'completed',
+                    ]);
+                }
+
+                return;
+            }
+
+            if (in_array($transactionStatus, ['EXPIRED', 'ORDER_EXPIRED'], true) || $orderStatus === 'ORDER_EXPIRED') {
+                $payment->update([
+                    'status' => 'expired',
+                    'raw_response' => $payload,
+                ]);
+
+                if ($order) {
+                    $order->update([
+                        'payment_status' => 'expired',
+                        'status' => 'expired',
+                    ]);
+                }
+
+                return;
+            }
+
+            if (in_array($transactionStatus, ['PENDING', '01'], true)) {
+                $payment->update([
+                    'status' => 'pending',
+                    'raw_response' => $payload,
+                ]);
+
+                return;
+            }
+
+            $payment->update([
+                'raw_response' => $payload,
+            ]);
+        });
+    }
     public function verifyNotification(Request $request, string $requestTarget): bool
     {
         $clientId = (string) $request->header('Client-Id', '');
@@ -112,6 +214,7 @@ class DokuCheckoutService
                 'callback_url' => route('orders.show', $order),
                 'callback_url_cancel' => route('orders.show', $order),
                 'callback_url_result' => route('orders.show', $order),
+                'notification_url' => config('services.doku.notification_url') ?: route('payments.doku.notification'),
                 'line_items' => $order->items->map(function ($item): array {
                     $product = $item->product;
 
@@ -141,15 +244,20 @@ class DokuCheckoutService
         ];
     }
 
-    private function buildSignature(string $requestId, string $requestTimestamp, string $requestTarget, string $digest): string
+    private function buildSignature(string $requestId, string $requestTimestamp, string $requestTarget, ?string $digest = null): string
     {
-        $stringToSign = implode("\n", [
+        $signatureParts = [
             'Client-Id:'.$this->clientId(),
             'Request-Id:'.$requestId,
             'Request-Timestamp:'.$requestTimestamp,
             'Request-Target:'.$requestTarget,
-            'Digest:'.$digest,
-        ]);
+        ];
+
+        if ($digest !== null) {
+            $signatureParts[] = 'Digest:'.$digest;
+        }
+
+        $stringToSign = implode("\n", $signatureParts);
 
         return 'HMACSHA256='.base64_encode(hash_hmac('sha256', $stringToSign, $this->secretKey(), true));
     }
@@ -190,3 +298,7 @@ class DokuCheckoutService
         return $secretKey;
     }
 }
+
+
+
+

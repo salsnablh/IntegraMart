@@ -23,8 +23,9 @@ class DokuNotificationController extends Controller
         }
 
         $payload = $request->json()->all();
-        $invoiceNumber = data_get($payload, 'order.invoice_number');
-        $transactionStatus = strtoupper((string) data_get($payload, 'transaction.status', ''));
+        $invoiceNumber = data_get($payload, 'order.invoice_number')
+            ?? data_get($payload, 'response.order.invoice_number')
+            ?? data_get($payload, 'order.invoice');
 
         if (! $invoiceNumber) {
             return response()->json([
@@ -52,62 +53,13 @@ class DokuNotificationController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        if ($payment->status === 'success') {
+        if (in_array($payment->status, ['paid', 'success'], true)) {
             return response()->json(['message' => 'OK']);
         }
 
-        DB::transaction(function () use ($payment, $payload, $transactionStatus): void {
-            $payment->loadMissing('order');
-            $order = $payment->order;
-
-            if ($transactionStatus === 'SUCCESS') {
-                $paidAt = data_get($payload, 'transaction.date');
-                $payment->update([
-                    'status' => 'paid',
-                    'paid_at' => $paidAt ? Carbon::parse($paidAt) : now(),
-                    'raw_response' => $payload,
-                ]);
-
-                if ($order) {
-                    $order->update([
-                        'payment_status' => 'paid',
-                        'status' => 'completed',
-                    ]);
-                }
-
-                return;
-            }
-
-            if ($transactionStatus === 'EXPIRED' || strtoupper((string) data_get($payload, 'order.status', '')) === 'ORDER_EXPIRED') {
-                $payment->update([
-                    'status' => 'expired',
-                    'raw_response' => $payload,
-                ]);
-
-                if ($order) {
-                    $order->update([
-                        'payment_status' => 'expired',
-                        'status' => 'expired',
-                    ]);
-                }
-
-                return;
-            }
-
-            if ($transactionStatus === 'PENDING') {
-                $payment->update([
-                    'status' => 'pending',
-                    'raw_response' => $payload,
-                ]);
-
-                return;
-            }
-
-            $payment->update([
-                'raw_response' => $payload,
-            ]);
-        });
+        $dokuCheckoutService->applyPaymentStatus($payment, $payload);
 
         return response()->json(['message' => 'OK']);
     }
 }
+

@@ -39,6 +39,7 @@ return [
         'secret_key' => env('DOKU_SECRET_KEY'),
         'base_url' => env('DOKU_BASE_URL', 'https://api-sandbox.doku.com'),
         'payment_due_date' => env('DOKU_PAYMENT_DUE_DATE', 60),
+        'notification_url' => env('DOKU_NOTIFICATION_URL'),
     ],
 
     'slack' => [
@@ -49,3 +50,4 @@ return [
     ],
 
 ];
+

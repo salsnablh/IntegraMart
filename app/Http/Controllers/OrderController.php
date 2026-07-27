@@ -23,7 +23,7 @@ class OrderController extends Controller
         return view('orders.index', compact('orders'));
     }
 
-    public function show(Order $order): View
+    public function show(Order $order, DokuCheckoutService $dokuCheckoutService): View
     {
         abort_unless(
             $order->user_id === auth()->id() || optional($order->customer)->user_id === auth()->id(),
@@ -33,6 +33,17 @@ class OrderController extends Controller
         $order->load(['items.product', 'customer', 'user', 'payments']);
 
         $latestPayment = $order->payments->sortByDesc('created_at')->first();
+
+        if ($latestPayment && in_array($order->payment_status, ['unpaid', 'pending'], true)) {
+            try {
+                $payload = $dokuCheckoutService->checkPaymentStatus($latestPayment->external_id ?? ($order->order_number ?? $order->order_code));
+                $dokuCheckoutService->applyPaymentStatus($latestPayment, $payload);
+                $order->refresh()->load(['items.product', 'customer', 'user', 'payments']);
+                $latestPayment = $order->payments->sortByDesc('created_at')->first();
+            } catch (\Throwable) {
+                // If DOKU status check is temporarily unavailable, keep rendering the local invoice state.
+            }
+        }
 
         return view('orders.show', compact('order', 'latestPayment'));
     }
@@ -92,3 +103,4 @@ class OrderController extends Controller
         return redirect()->away($paymentUrl);
     }
 }
+
